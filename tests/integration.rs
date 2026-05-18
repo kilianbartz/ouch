@@ -1370,8 +1370,6 @@ fn decompress_concatenated_lz4_frames() {
 fn decompress_gnusparse_tar_gz() {
     use std::io::Seek;
 
-    use flate2::read::GzDecoder;
-
     let (_tempdir, dir) = testdir().unwrap();
     let before = &dir.join("before");
     let before_dir = &before.join("dir");
