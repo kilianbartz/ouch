@@ -1362,3 +1362,38 @@ fn decompress_concatenated_lz4_frames() {
         encoder.finish().unwrap()
     });
 }
+
+/// Regression test for pull request #975: GNUSparse tar entries were silently skipped during
+/// decompression
+#[cfg(unix)]
+#[test]
+fn decompress_gnusparse_tar_gz() {
+    use std::io::Seek;
+
+    use flate2::read::GzDecoder;
+
+    let (_tempdir, dir) = testdir().unwrap();
+    let before = &dir.join("before");
+    let before_dir = &before.join("dir");
+    fs::create_dir_all(before_dir).unwrap();
+
+    // Create a sparse file: two ones, a large hole (zeros), then a one.
+    // The hole must exceed the filesystem block size (typically 4096 bytes) for the
+    // OS to report it via SEEK_HOLE, which the tar crate uses to produce GNUSparse entries.
+    const HOLE_SIZE: i64 = 1024 * 1024; // 1 MiB
+    {
+        let mut file = fs::File::create(before_dir.join("sparse_file.bin")).unwrap();
+        file.write_all(&[1u8, 1u8]).unwrap();
+        file.seek(std::io::SeekFrom::Current(HOLE_SIZE)).unwrap();
+        file.write_all(&[1u8]).unwrap();
+    }
+
+    let archive = &dir.join("archive.tar.gz");
+    let after = &dir.join("after");
+
+    ouch!("-A", "c", before_dir, archive);
+    ouch!("-A", "d", archive, "-d", after);
+
+    assert_same_directory(before, after, false);
+}
+
