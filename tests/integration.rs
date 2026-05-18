@@ -1365,7 +1365,10 @@ fn decompress_concatenated_lz4_frames() {
 
 /// Regression test for pull request #975: GNUSparse tar entries were silently skipped during
 /// decompression
-#[cfg(unix)]
+// The test is scoped to the operating systems for which the tar crate's `find_sparse_entries`
+// function is implemented through `SEEK_HOLE` and `SEEK_DATA`.
+// On other systems, the tar crate does not create any sparse entries.
+#[cfg(any(target_os = "android", target_os = "freebsd", target_os = "linux"))]
 #[test]
 fn decompress_gnusparse_tar_gz() {
     use std::io::Seek;
